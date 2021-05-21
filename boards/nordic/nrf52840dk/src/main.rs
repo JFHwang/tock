@@ -74,7 +74,7 @@ use kernel::common::dynamic_deferred_call::{DynamicDeferredCall, DynamicDeferred
 use kernel::component::Component;
 use kernel::hil::led::LedLow;
 use kernel::hil::symmetric_encryption::AES128;
-use kernel::hil::time::Counter;
+use kernel::hil::time::{Alarm, Counter};
 #[allow(unused_imports)]
 use kernel::hil::usb::Client;
 #[allow(unused_imports)]
@@ -159,6 +159,10 @@ pub struct Platform {
         'static,
         kernel::hil::led::LedLow<'static, nrf52840::gpio::GPIOPin<'static>>,
     >,
+    accelerate: &'static capsules::accel::Accelerate<
+        'static, 
+        VirtualMuxAlarm<'static, nrf52840::rtc::Rtc<'static>>,
+    >,
     rng: &'static capsules::rng::RngDriver<'static>,
     temp: &'static capsules::temperature::TemperatureSensor<'static>,
     ipc: kernel::ipc::IPC<NUM_PROCS>,
@@ -168,7 +172,7 @@ pub struct Platform {
     >,
     alarm: &'static capsules::alarm::AlarmDriver<
         'static,
-        capsules::virtual_alarm::VirtualMuxAlarm<'static, nrf52840::rtc::Rtc<'static>>,
+        VirtualMuxAlarm<'static, nrf52840::rtc::Rtc<'static>>,
     >,
     nonvolatile_storage: &'static capsules::nonvolatile_storage_driver::NonvolatileStorage<'static>,
     udp_driver: &'static capsules::net::udp::UDPDriver<'static>,
@@ -192,6 +196,7 @@ impl kernel::Platform for Platform {
             capsules::analog_comparator::DRIVER_NUM => f(Some(self.analog_comparator)),
             capsules::nonvolatile_storage_driver::DRIVER_NUM => f(Some(self.nonvolatile_storage)),
             capsules::net::udp::DRIVER_NUM => f(Some(self.udp_driver)),
+            //capsules::accel::DRIVER_NUM => f(Some(self.accelerate)),
             kernel::ipc::DRIVER_NUM => f(Some(&self.ipc)),
             _ => f(None),
         }
@@ -337,6 +342,14 @@ pub unsafe fn main() {
         .finalize(components::alarm_mux_component_helper!(nrf52840::rtc::Rtc));
     let alarm = components::alarm::AlarmDriverComponent::new(board_kernel, mux_alarm)
         .finalize(components::alarm_component_helper!(nrf52840::rtc::Rtc));
+
+    let accelerate_virtual_alarm = static_init!(
+        VirtualMuxAlarm<'static, nrf52840::rtc::Rtc>,
+        VirtualMuxAlarm::new(mux_alarm));
+    let accelerate = static_init!(
+        capsules::accel::Accelerate<'static, VirtualMuxAlarm<'static, nrf52840::rtc::Rtc<'static>>>,
+        capsules::accel::Accelerate::new(accelerate_virtual_alarm));
+    accelerate_virtual_alarm.set_alarm_client(accelerate);
 
     let channel = nrf52_components::UartChannelComponent::new(
         uart_channel,
@@ -542,6 +555,7 @@ pub unsafe fn main() {
         pconsole,
         console,
         led,
+        accelerate,
         gpio,
         rng,
         temp,
@@ -553,6 +567,8 @@ pub unsafe fn main() {
     };
 
     let _ = platform.pconsole.start();
+    platform.accelerate.start();
+
     debug!("Initialization complete. Entering main loop\r");
     debug!("{}", &nrf52840::ficr::FICR_INSTANCE);
 
