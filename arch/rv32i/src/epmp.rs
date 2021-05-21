@@ -13,6 +13,7 @@ use crate::csr;
 use core::cell::Cell;
 use core::{cmp, fmt};
 use kernel::common::cells::{MapCell, OptionalCell};
+use kernel::common::registers::interfaces::{ReadWriteable, Writeable};
 use kernel::common::registers::{self, register_bitfields};
 use kernel::{mpu, ProcessId};
 
@@ -112,6 +113,62 @@ impl<const MAX_AVAILABLE_REGIONS_OVER_TWO: usize> PMP<MAX_AVAILABLE_REGIONS_OVER
             num_regions,
             locked_region_mask: Cell::new(locked_region_mask),
         }
+    }
+}
+
+impl<const MAX_AVAILABLE_REGIONS_OVER_TWO: usize> fmt::Display
+    for PMP<MAX_AVAILABLE_REGIONS_OVER_TWO>
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fn bit_str<'a>(cfg: u8, bit: u8, on_str: &'a str, off_str: &'a str) -> &'a str {
+            match cfg & bit {
+                0 => off_str,
+                _ => on_str,
+            }
+        }
+
+        fn enabled_str<'a>(cfg: u8) -> &'a str {
+            if cfg & pmpcfg::a::OFF.mask() == pmpcfg::a::OFF.value {
+                "OFF"
+            } else if cfg & pmpcfg::a::TOR.mask() == pmpcfg::a::TOR.value {
+                "TOR"
+            } else if cfg & pmpcfg::a::NA4.mask() == pmpcfg::a::NA4.value {
+                "NA4"
+            } else if cfg & pmpcfg::a::NAPOT.mask() == pmpcfg::a::NAPOT.value {
+                "NAPOT"
+            } else {
+                unreachable!()
+            }
+        }
+
+        write!(f, " ePMP regions:\r\n")?;
+
+        for i in 0..(MAX_AVAILABLE_REGIONS_OVER_TWO * 2) {
+            // Read the current value
+            let pmpcfg = (csr::CSR.pmpconfig_get(i / 4) >> ((i % 4) * 8)) as u8;
+            let pmpaddr0 = if i > 0 {
+                csr::CSR.pmpaddr_get(i - 1) << 2
+            } else {
+                0
+            };
+            let pmpaddr1 = csr::CSR.pmpaddr_get(i) << 2;
+
+            write!(
+                f,
+                "  [{}]: addr={:#010X}, end={:#010X}, cfg={:#X} ({}) ({}{}{}{})\r\n",
+                i,
+                pmpaddr0,
+                pmpaddr1,
+                pmpcfg,
+                enabled_str(pmpcfg),
+                bit_str(pmpcfg, pmpcfg::l::SET.value, "l", "-"),
+                bit_str(pmpcfg, pmpcfg::r::SET.value, "r", "-"),
+                bit_str(pmpcfg, pmpcfg::w::SET.value, "w", "-"),
+                bit_str(pmpcfg, pmpcfg::x::SET.value, "x", "-"),
+            )?;
+        }
+
+        Ok(())
     }
 }
 
@@ -294,7 +351,7 @@ impl<const MAX_AVAILABLE_REGIONS_OVER_TWO: usize> fmt::Display
     for PMPConfig<MAX_AVAILABLE_REGIONS_OVER_TWO>
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, " PMP regions:\r\n")?;
+        write!(f, " App ePMP regions:\r\n")?;
         for (n, region) in self.regions.iter().enumerate() {
             match region {
                 None => write!(f, "  <unset>\r\n")?,
@@ -413,9 +470,6 @@ impl<const MAX_AVAILABLE_REGIONS_OVER_TWO: usize> kernel::mpu::MPU
     fn enable_app_mpu(&self) {}
 
     fn disable_app_mpu(&self) {
-        // Enable debug access
-        csr::CSR.mseccfg.modify(csr::mseccfg::mseccfg::rlb::SET);
-
         for i in 0..self.number_total_regions() {
             if self.locked_region_mask.get() & (1 << i) > 0 {
                 continue;
@@ -430,9 +484,6 @@ impl<const MAX_AVAILABLE_REGIONS_OVER_TWO: usize> kernel::mpu::MPU
                 _ => break,
             };
         }
-
-        // Disable debug access
-        csr::CSR.mseccfg.modify(csr::mseccfg::mseccfg::rlb::CLEAR);
     }
 
     fn number_total_regions(&self) -> usize {
@@ -611,9 +662,6 @@ impl<const MAX_AVAILABLE_REGIONS_OVER_TWO: usize> kernel::mpu::MPU
             .last_configured_for
             .map_or(false, |last_app_id| last_app_id == app_id);
 
-        // Enable debug access
-        csr::CSR.mseccfg.modify(csr::mseccfg::mseccfg::rlb::SET);
-
         if !last_configured_for_this_app || config.is_dirty.get() {
             // We weren't last configured for this app, re-configure everything
             for (x, region) in config.regions.iter().enumerate() {
@@ -636,11 +684,11 @@ impl<const MAX_AVAILABLE_REGIONS_OVER_TWO: usize> kernel::mpu::MPU
                                 csr::CSR.pmpaddr_set(x * 2, start >> 2);
 
                                 // Set access to end address
+                                csr::CSR.pmpaddr_set((x * 2) + 1, (start + size) >> 2);
                                 csr::CSR.pmpconfig_set(
                                     x / 2,
                                     cfg_val << 8 | csr::CSR.pmpconfig_get(x / 2),
                                 );
-                                csr::CSR.pmpaddr_set((x * 2) + 1, (start + size) >> 2);
                             }
                             1 => {
                                 // Disable access up to the start address
@@ -654,11 +702,11 @@ impl<const MAX_AVAILABLE_REGIONS_OVER_TWO: usize> kernel::mpu::MPU
                                 csr::CSR.pmpaddr_set(x * 2, start >> 2);
 
                                 // Set access to end address
+                                csr::CSR.pmpaddr_set((x * 2) + 1, (start + size) >> 2);
                                 csr::CSR.pmpconfig_set(
                                     x / 2,
                                     cfg_val << 24 | csr::CSR.pmpconfig_get(x / 2),
                                 );
-                                csr::CSR.pmpaddr_set((x * 2) + 1, (start + size) >> 2);
                             }
                             _ => break,
                         }
@@ -688,9 +736,6 @@ impl<const MAX_AVAILABLE_REGIONS_OVER_TWO: usize> kernel::mpu::MPU
 
         config.is_dirty.set(false);
         self.last_configured_for.put(*app_id);
-
-        // Disable debug access
-        csr::CSR.mseccfg.modify(csr::mseccfg::mseccfg::rlb::CLEAR);
     }
 }
 

@@ -16,8 +16,8 @@ use kernel::common::cells::OptionalCell;
 
 use crate::csr;
 use kernel::common::cells::MapCell;
-use kernel::common::registers;
-use kernel::common::registers::register_bitfields;
+use kernel::common::registers::interfaces::Writeable;
+use kernel::common::registers::{self, register_bitfields};
 use kernel::mpu;
 use kernel::ProcessId;
 
@@ -542,11 +542,11 @@ impl<const MAX_AVAILABLE_REGIONS_OVER_TWO: usize> kernel::mpu::MPU
                                 csr::CSR.pmpaddr_set(x * 2, start >> 2);
 
                                 // Set access to end address
+                                csr::CSR.pmpaddr_set((x * 2) + 1, (start + size) >> 2);
                                 csr::CSR.pmpconfig_set(
                                     x / 2,
                                     cfg_val << 8 | csr::CSR.pmpconfig_get(x / 2),
                                 );
-                                csr::CSR.pmpaddr_set((x * 2) + 1, (start + size) >> 2);
                             }
                             1 => {
                                 // Disable access up to the start address
@@ -560,11 +560,11 @@ impl<const MAX_AVAILABLE_REGIONS_OVER_TWO: usize> kernel::mpu::MPU
                                 csr::CSR.pmpaddr_set(x * 2, start >> 2);
 
                                 // Set access to end address
+                                csr::CSR.pmpaddr_set((x * 2) + 1, (start + size) >> 2);
                                 csr::CSR.pmpconfig_set(
                                     x / 2,
                                     cfg_val << 24 | csr::CSR.pmpconfig_get(x / 2),
                                 );
-                                csr::CSR.pmpaddr_set((x * 2) + 1, (start + size) >> 2);
                             }
                             _ => break,
                         }
