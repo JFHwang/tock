@@ -15,6 +15,7 @@
 use capsules::led::LedDriver;
 use core::mem::MaybeUninit;
 use kernel::component::Component;
+use kernel::power::PowerState;
 use kernel::hil::led::Led;
 use kernel::static_init_half;
 
@@ -51,11 +52,17 @@ macro_rules! led_component_buf {
 
 pub struct LedsComponent<L: 'static + Led> {
     leds: &'static mut [&'static L],
+    ptracker: &'static capsules::power::Power,
 }
 
 impl<L: 'static + Led> LedsComponent<L> {
-    pub fn new(leds: &'static mut [&'static L]) -> Self {
-        Self { leds }
+    pub fn new(leds: &'static mut [&'static L], p: &'static capsules::power::Power) -> Self {
+
+        //mux: &'static MuxAlarm<'static, A>,
+        Self { 
+            leds: leds,
+            ptracker: p,
+        }
     }
 }
 
@@ -67,7 +74,7 @@ impl<L: 'static + Led> Component for LedsComponent<L> {
         static_init_half!(
             static_buffer,
             LedDriver<'static, L>,
-            LedDriver::new(self.leds)
+            LedDriver::new(self.leds, self.ptracker)
         )
     }
 }

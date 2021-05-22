@@ -72,6 +72,7 @@ use capsules::virtual_aes_ccm::MuxAES128CCM;
 use capsules::virtual_alarm::VirtualMuxAlarm;
 use kernel::common::dynamic_deferred_call::{DynamicDeferredCall, DynamicDeferredCallClientState};
 use kernel::component::Component;
+use kernel::power::PowerState;
 use kernel::hil::led::LedLow;
 use kernel::hil::symmetric_encryption::AES128;
 use kernel::hil::time::{Alarm, Counter};
@@ -297,13 +298,17 @@ pub unsafe fn main() {
     )
     .finalize(components::button_component_buf!(nrf52840::gpio::GPIOPin));
 
+    let power = static_init!(
+        capsules::power::Power,
+        capsules::power::Power::new());
+
     let led = components::led::LedsComponent::new(components::led_component_helper!(
         LedLow<'static, nrf52840::gpio::GPIOPin>,
         LedLow::new(&nrf52840_peripherals.gpio_port[LED1_PIN]),
         LedLow::new(&nrf52840_peripherals.gpio_port[LED2_PIN]),
         LedLow::new(&nrf52840_peripherals.gpio_port[LED3_PIN]),
         LedLow::new(&nrf52840_peripherals.gpio_port[LED4_PIN]),
-    ))
+    ), power)
     .finalize(components::led_component_buf!(
         LedLow<'static, nrf52840::gpio::GPIOPin>
     ));

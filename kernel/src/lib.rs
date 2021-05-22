@@ -97,6 +97,7 @@ pub mod hil;
 pub mod introspection;
 pub mod ipc;
 pub mod syscall;
+pub mod power;
 
 mod config;
 mod driver;
