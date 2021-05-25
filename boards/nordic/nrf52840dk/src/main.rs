@@ -72,7 +72,6 @@ use capsules::virtual_aes_ccm::MuxAES128CCM;
 use capsules::virtual_alarm::VirtualMuxAlarm;
 use kernel::common::dynamic_deferred_call::{DynamicDeferredCall, DynamicDeferredCallClientState};
 use kernel::component::Component;
-use kernel::power::PowerState;
 use kernel::hil::led::LedLow;
 use kernel::hil::symmetric_encryption::AES128;
 use kernel::hil::time::{Alarm, Counter};
@@ -160,10 +159,11 @@ pub struct Platform {
         'static,
         kernel::hil::led::LedLow<'static, nrf52840::gpio::GPIOPin<'static>>,
     >,
+    /*
     accelerate: &'static capsules::accel::Accelerate<
         'static, 
         VirtualMuxAlarm<'static, nrf52840::rtc::Rtc<'static>>,
-    >,
+    >,*/
     rng: &'static capsules::rng::RngDriver<'static>,
     temp: &'static capsules::temperature::TemperatureSensor<'static>,
     ipc: kernel::ipc::IPC<NUM_PROCS>,
@@ -298,9 +298,13 @@ pub unsafe fn main() {
     )
     .finalize(components::button_component_buf!(nrf52840::gpio::GPIOPin));
 
-    let power = static_init!(
-        capsules::power::Power,
-        capsules::power::Power::new());
+    let energy_tracker = static_init!(
+        capsules::energy_tracker::EnergyTracker,
+        capsules::energy_tracker::EnergyTracker::new(
+            &mut capsules::energy_tracker::TOTAL_TIME,
+            &mut capsules::energy_tracker::CURRENT_TIME,
+            &mut capsules::energy_tracker::CURRENT_MODE,
+        ));
 
     let led = components::led::LedsComponent::new(components::led_component_helper!(
         LedLow<'static, nrf52840::gpio::GPIOPin>,
@@ -308,7 +312,7 @@ pub unsafe fn main() {
         LedLow::new(&nrf52840_peripherals.gpio_port[LED2_PIN]),
         LedLow::new(&nrf52840_peripherals.gpio_port[LED3_PIN]),
         LedLow::new(&nrf52840_peripherals.gpio_port[LED4_PIN]),
-    ), power)
+    ), energy_tracker)
     .finalize(components::led_component_buf!(
         LedLow<'static, nrf52840::gpio::GPIOPin>
     ));
@@ -348,14 +352,14 @@ pub unsafe fn main() {
     let alarm = components::alarm::AlarmDriverComponent::new(board_kernel, mux_alarm)
         .finalize(components::alarm_component_helper!(nrf52840::rtc::Rtc));
 
-    let accelerate_virtual_alarm = static_init!(
+/*    let accelerate_virtual_alarm = static_init!(
         VirtualMuxAlarm<'static, nrf52840::rtc::Rtc>,
         VirtualMuxAlarm::new(mux_alarm));
     let accelerate = static_init!(
         capsules::accel::Accelerate<'static, VirtualMuxAlarm<'static, nrf52840::rtc::Rtc<'static>>>,
         capsules::accel::Accelerate::new(accelerate_virtual_alarm));
     accelerate_virtual_alarm.set_alarm_client(accelerate);
-
+*/
     let channel = nrf52_components::UartChannelComponent::new(
         uart_channel,
         mux_alarm,
@@ -560,7 +564,7 @@ pub unsafe fn main() {
         pconsole,
         console,
         led,
-        accelerate,
+//        accelerate,
         gpio,
         rng,
         temp,
@@ -572,7 +576,7 @@ pub unsafe fn main() {
     };
 
     let _ = platform.pconsole.start();
-    platform.accelerate.start();
+//    platform.accelerate.start();
 
     debug!("Initialization complete. Entering main loop\r");
     debug!("{}", &nrf52840::ficr::FICR_INSTANCE);

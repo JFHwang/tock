@@ -50,7 +50,7 @@
 //!   - `data`: The index of the LED. Starts at 0.
 //!   - Return: `Ok(())` if the LED index was valid, `INVAL` otherwise.
 
-use kernel::power::PowerState;
+use kernel::state_tracker::StateTracker;
 use kernel::common::cells::TakeCell;
 use kernel::hil::led;
 
@@ -64,7 +64,7 @@ pub const DRIVER_NUM: usize = driver::NUM::Led as usize;
 /// control them.
 pub struct LedDriver<'a, L: led::Led> {
     leds: TakeCell<'a, [&'a L]>,
-    ptracker: &'a dyn PowerState,
+    etracker: &'a dyn StateTracker,
 }
 /*
 pub struct Screen<'a> {
@@ -87,7 +87,7 @@ impl<'a> Screen<'a> {
 impl<'a, L: led::Led> LedDriver<'a, L> {
     pub fn new(
         leds: &'a mut [&'a L], 
-        p: &'a dyn PowerState,
+        e: &'a dyn StateTracker,
     ) -> Self {
         // Initialize all LEDs and turn them off
         for led in leds.iter_mut() {
@@ -97,26 +97,10 @@ impl<'a, L: led::Led> LedDriver<'a, L> {
 
         Self {
             leds: TakeCell::new(leds),
-            ptracker: p,
+            etracker: e,
         }
     }
 }
-
-/*
-impl<L: led::Led> power::PowerState for LedDriver<'_, L> {
-    fn track_on(&self, state: u32) {
-//        self.total_time[state] = 1;
-//        let cur_time = self.now().into_u32;
-        debug!("Peripheral {} is on", state);
-    }
-
-    fn track_off(&self, state: u32) {
-//        self.total_time[state] = 1;
-//        let cur_time = self.now().into_u32;
-        debug!("Peripheral {} is off", state);
-    }
-}
-*/
 
 impl<L: led::Led> Driver for LedDriver<'_, L> {
     /// Control the LEDs.
@@ -131,7 +115,7 @@ impl<L: led::Led> Driver for LedDriver<'_, L> {
     ///        if the LED index is not valid.
     /// - `3`: Toggle the LED at index specified by `data` on or off. Returns
     ///        `INVAL` if the LED index is not valid.
-    fn command(&self, command_num: usize, data: usize, _: usize, _: ProcessId) -> CommandReturn {
+    fn command(&self, command_num: usize, data: usize, _: usize, pid: ProcessId) -> CommandReturn {
         self.leds
             .map(|leds| {
                 match command_num {
@@ -143,7 +127,7 @@ impl<L: led::Led> Driver for LedDriver<'_, L> {
                             CommandReturn::failure(ErrorCode::INVAL) /* led out of range */
                         } else {
                             leds[data].on();
-                            self.ptracker.track_on(0); //power::PeripheralStates::LED);
+                            self.etracker.track_on(0, data, pid.id()); //state_tracker::PeripheralStates::LED);
                             CommandReturn::success()
                         }
                     }
@@ -154,7 +138,7 @@ impl<L: led::Led> Driver for LedDriver<'_, L> {
                             CommandReturn::failure(ErrorCode::INVAL) /* led out of range */
                         } else {
                             leds[data].off();
-                            self.ptracker.track_off(0); // power::PeripheralStates::LED);
+                            self.etracker.track_off(0, data, pid.id()); // state_tracker::PeripheralStates::LED);
                             CommandReturn::success()
                         }
                     }

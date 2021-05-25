@@ -97,7 +97,7 @@ pub mod hil;
 pub mod introspection;
 pub mod ipc;
 pub mod syscall;
-pub mod power;
+pub mod state_tracker;
 
 mod config;
 mod driver;
