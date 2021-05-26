@@ -53,7 +53,6 @@
 use kernel::state_tracker::StateTracker;
 use kernel::common::cells::TakeCell;
 use kernel::hil::led;
-
 use kernel::{CommandReturn, Driver, ErrorCode, ProcessId};
 
 /// Syscall driver number.
@@ -66,24 +65,7 @@ pub struct LedDriver<'a, L: led::Led> {
     leds: TakeCell<'a, [&'a L]>,
     etracker: &'a dyn StateTracker,
 }
-/*
-pub struct Screen<'a> {
-    screen: &'a dyn hil::screen::Screen,
-    screen_setup: Option<&'a dyn hil::screen::ScreenSetup>,
-    apps: Grant<App>,
-    screen_ready: Cell<bool>,
-    current_app: OptionalCell<ProcessId>,
-    pixel_format: Cell<ScreenPixelFormat>,
-    buffer: TakeCell<'static, [u8]>,
-}
 
-
-
-impl<'a> Screen<'a> {
-    pub fn new(
-        screen: &'a dyn hil::screen::Screen,
-        screen_setup: Option<&'a dyn hil::screen::ScreenSetup>,
-    */ 
 impl<'a, L: led::Led> LedDriver<'a, L> {
     pub fn new(
         leds: &'a mut [&'a L], 
