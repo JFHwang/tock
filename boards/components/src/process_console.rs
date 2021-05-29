@@ -23,16 +23,19 @@ use kernel::static_init;
 pub struct ProcessConsoleComponent {
     board_kernel: &'static kernel::Kernel,
     uart_mux: &'static MuxUart<'static>,
+    energy_tracker: &'static dyn hil::energy_tracker::Query,
 }
 
 impl ProcessConsoleComponent {
     pub fn new(
         board_kernel: &'static kernel::Kernel,
         uart_mux: &'static MuxUart,
+        energy_tracker: &'static dyn hil::energy_tracker::Query,
     ) -> ProcessConsoleComponent {
         ProcessConsoleComponent {
             board_kernel: board_kernel,
             uart_mux: uart_mux,
+            energy_tracker: energy_tracker,
         }
     }
 }
@@ -56,6 +59,7 @@ impl Component for ProcessConsoleComponent {
                 &mut process_console::WRITE_BUF,
                 &mut process_console::READ_BUF,
                 &mut process_console::COMMAND_BUF,
+                self.energy_tracker,
                 self.board_kernel,
                 Capability,
             )

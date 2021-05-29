@@ -5,6 +5,9 @@ use crate::process::ProcessId;
 
 pub const MAX_COMPONENT_NUM: usize = 10;
 
+pub type Energy = f32;
+pub type Power = f32;
+
 #[derive(Clone, Copy)]
 pub enum PowerState {
     None,
@@ -28,9 +31,15 @@ impl Display for PowerState {
 }
 
 pub trait PowerModel {
-    fn get_power(&self, component_id: usize, state: PowerState) -> f32;
+    fn get_power(&self, component_id: usize, state: PowerState) -> Power;
 }
 
-pub trait PowerStateTracker {
-    fn set_power_state(&self, component_id: usize, app_id: ProcessId, state: PowerState);
+pub trait Track {
+    fn set_power_state(&self, component_id: usize, app_id: ProcessId, power_state: PowerState);
+}
+
+pub trait Query {
+    fn query_app_energy_consumption(&self, app_id: ProcessId) -> Energy;
+    fn freeze(&self, app_id: ProcessId);
+    fn freeze_all(&self);
 }

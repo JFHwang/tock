@@ -1,5 +1,4 @@
-use kernel::debug;
-use kernel::hil::energy_tracker::{PowerState, PowerStateTracker, MAX_COMPONENT_NUM};
+use kernel::hil::energy_tracker::{Energy, PowerState, Query, Track, MAX_COMPONENT_NUM};
 use kernel::{Grant, ProcessId};
 
 pub struct EnergyTracker {
@@ -7,7 +6,8 @@ pub struct EnergyTracker {
 }
 
 pub struct App {
-    total_energy_consumed: f32,
+    total_energy_consumed_freeze: Energy,
+    total_energy_consumed: Energy,
     power_state_records: [PowerStateRecord; MAX_COMPONENT_NUM],
 }
 
@@ -23,21 +23,31 @@ impl EnergyTracker {
     }
 }
 
-impl PowerStateTracker for EnergyTracker {
-    fn set_power_state(&self, component_id: usize, app_id: ProcessId, state: PowerState) {
-        debug!(
-            "App {} sets component {}'s power state to be {}",
-            app_id.id(),
-            component_id,
-            state,
-        );
+impl Track for EnergyTracker {
+    fn set_power_state(&self, component_id: usize, app_id: ProcessId, power_state: PowerState) {
+        self.grants.each(|_, app| {
+            app.power_state_records[component_id].power_state = power_state;
+        });
     }
+}
+
+impl Query for EnergyTracker {
+    fn query_app_energy_consumption(&self, app_id: ProcessId) -> Energy {
+        self.grants
+            .enter(app_id, |app| app.total_energy_consumed_freeze)
+            .unwrap_or(Energy::default())
+    }
+
+    fn freeze(&self, app_id: ProcessId) {}
+
+    fn freeze_all(&self) {}
 }
 
 impl Default for App {
     fn default() -> Self {
         Self {
-            total_energy_consumed: 0.0,
+            total_energy_consumed_freeze: Energy::default(),
+            total_energy_consumed: Energy::default(),
             power_state_records: [PowerStateRecord::default(); MAX_COMPONENT_NUM],
         }
     }

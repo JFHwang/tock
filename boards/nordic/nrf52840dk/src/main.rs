@@ -372,9 +372,12 @@ pub unsafe fn main() {
         components::console::UartMuxComponent::new(channel, 115200, dynamic_deferred_caller)
             .finalize(());
 
-    let pconsole =
-        components::process_console::ProcessConsoleComponent::new(board_kernel, uart_mux)
-            .finalize(());
+    let pconsole = components::process_console::ProcessConsoleComponent::new(
+        board_kernel,
+        uart_mux,
+        energy_tracker,
+    )
+    .finalize(());
 
     // Setup the console.
     let console = components::console::ConsoleComponent::new(board_kernel, uart_mux).finalize(());

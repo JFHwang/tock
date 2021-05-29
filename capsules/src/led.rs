@@ -51,7 +51,8 @@
 //!   - Return: `Ok(())` if the LED index was valid, `INVAL` otherwise.
 
 use kernel::common::cells::TakeCell;
-use kernel::hil::energy_tracker::{PowerState, PowerStateTracker};
+use kernel::hil::energy_tracker;
+use kernel::hil::energy_tracker::PowerState;
 use kernel::hil::led;
 use kernel::{CommandReturn, Driver, ErrorCode, ProcessId};
 
@@ -64,14 +65,14 @@ pub const DRIVER_NUM: usize = driver::NUM::Led as usize;
 pub struct LedDriver<'a, L: led::Led> {
     leds: TakeCell<'a, [&'a L]>,
     component_ids: TakeCell<'a, [usize]>,
-    power_state_tracker: &'a dyn PowerStateTracker,
+    power_state_tracker: &'a dyn energy_tracker::Track,
 }
 
 impl<'a, L: led::Led> LedDriver<'a, L> {
     pub fn new(
         leds: &'a mut [&'a L],
         component_ids: &'a mut [usize],
-        power_state_tracker: &'a dyn PowerStateTracker,
+        power_state_tracker: &'a dyn energy_tracker::Track,
     ) -> Self {
         // Initialize all LEDs and turn them off
         for led in leds.iter_mut() {

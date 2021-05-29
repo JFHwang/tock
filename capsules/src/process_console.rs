@@ -118,6 +118,7 @@ use core::str;
 use kernel::capabilities::ProcessManagementCapability;
 use kernel::common::cells::TakeCell;
 use kernel::debug;
+use kernel::hil::energy_tracker;
 use kernel::hil::uart;
 use kernel::introspection::KernelInfo;
 use kernel::ErrorCode;
@@ -142,6 +143,8 @@ pub struct ProcessConsole<'a, C: ProcessManagementCapability> {
     command_buffer: TakeCell<'static, [u8]>,
     command_index: Cell<usize>,
 
+    energy_tracker: &'a dyn energy_tracker::Query,
+
     /// Flag to mark that the process console is active and has called receive
     /// from the underlying UART.
     running: Cell<bool>,
@@ -159,6 +162,7 @@ impl<'a, C: ProcessManagementCapability> ProcessConsole<'a, C> {
         tx_buffer: &'static mut [u8],
         rx_buffer: &'static mut [u8],
         cmd_buffer: &'static mut [u8],
+        energy_tracker: &'a dyn energy_tracker::Query,
         kernel: &'static Kernel,
         capability: C,
     ) -> ProcessConsole<'a, C> {
@@ -170,6 +174,7 @@ impl<'a, C: ProcessManagementCapability> ProcessConsole<'a, C> {
             rx_buffer: TakeCell::new(rx_buffer),
             command_buffer: TakeCell::new(cmd_buffer),
             command_index: Cell::new(0),
+            energy_tracker: energy_tracker,
             running: Cell::new(false),
             execute: Cell::new(false),
             kernel: kernel,
@@ -255,7 +260,7 @@ impl<'a, C: ProcessManagementCapability> ProcessConsole<'a, C> {
                                 );
                             });
                         } else if clean_str.starts_with("list") {
-                            debug!(" PID    Name                Quanta  Syscalls  Dropped Upcalls  Restarts    State  Grants");
+                            debug!(" PID    Name                Quanta  Syscalls  Dropped Upcalls  Restarts    State  Grants  Energy");
                             self.kernel
                                 .process_each_capability(&self.capability, |proc| {
                                     let info: KernelInfo = KernelInfo::new(self.kernel);
@@ -263,9 +268,10 @@ impl<'a, C: ProcessManagementCapability> ProcessConsole<'a, C> {
                                     let pname = proc.get_process_name();
                                     let appid = proc.processid();
                                     let (grants_used, grants_total) = info.number_app_grant_uses(appid, &self.capability);
+                                    let energy_consumed = self.energy_tracker.query_app_energy_consumption(appid);
 
                                     debug!(
-                                        "  {:?}\t{:<20}{:6}{:10}{:17}{:10}  {:?}{:5}/{}",
+                                        "  {:?}\t{:<20}{:6}{:10}{:17}{:10}  {:?}{:5}/{}  {:>6.2}",
                                         appid,
                                         pname,
                                         proc.debug_timeslice_expiration_count(),
@@ -274,7 +280,8 @@ impl<'a, C: ProcessManagementCapability> ProcessConsole<'a, C> {
                                         proc.get_restart_count(),
                                         proc.get_state(),
                                         grants_used,
-                                        grants_total
+                                        grants_total,
+                                        energy_consumed,
                                     );
                                 });
                         } else if clean_str.starts_with("status") {
