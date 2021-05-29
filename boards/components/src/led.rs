@@ -51,16 +51,20 @@ macro_rules! led_component_buf {
 
 pub struct LedsComponent<L: 'static + Led> {
     leds: &'static mut [&'static L],
-    etracker: &'static capsules::energy_tracker::EnergyTracker,
+    component_ids: &'static mut [usize],
+    energy_tracker: &'static capsules::energy_tracker::EnergyTracker,
 }
 
 impl<L: 'static + Led> LedsComponent<L> {
-    pub fn new(leds: &'static mut [&'static L], e: &'static capsules::energy_tracker::EnergyTracker) -> Self {
-
-        //mux: &'static MuxAlarm<'static, A>,
-        Self { 
-            leds: leds,
-            etracker: e,
+    pub fn new(
+        leds: &'static mut [&'static L],
+        component_ids: &'static mut [usize],
+        energy_tracker: &'static capsules::energy_tracker::EnergyTracker,
+    ) -> Self {
+        Self {
+            leds,
+            component_ids,
+            energy_tracker,
         }
     }
 }
@@ -73,7 +77,7 @@ impl<L: 'static + Led> Component for LedsComponent<L> {
         static_init_half!(
             static_buffer,
             LedDriver<'static, L>,
-            LedDriver::new(self.leds, self.etracker)
+            LedDriver::new(self.leds, self.component_ids, self.energy_tracker)
         )
     }
 }

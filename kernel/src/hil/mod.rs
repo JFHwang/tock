@@ -8,6 +8,7 @@ pub mod crc;
 pub mod dac;
 pub mod digest;
 pub mod eic;
+pub mod energy_tracker;
 pub mod entropy;
 pub mod flash;
 pub mod gpio;

@@ -240,6 +240,13 @@ pub unsafe fn main() {
 
     let board_kernel = static_init!(kernel::Kernel, kernel::Kernel::new(&PROCESSES));
 
+    // Create capabilities that the board needs to call certain protected kernel
+    // functions.
+    let process_management_capability =
+        create_capability!(capabilities::ProcessManagementCapability);
+    let main_loop_capability = create_capability!(capabilities::MainLoopCapability);
+    let memory_allocation_capability = create_capability!(capabilities::MemoryAllocationCapability);
+
     let gpio = components::gpio::GpioComponent::new(
         board_kernel,
         components::gpio_component_helper!(
@@ -292,21 +299,26 @@ pub unsafe fn main() {
     )
     .finalize(components::button_component_buf!(nrf52840::gpio::GPIOPin));
 
+    let led_component_ids = static_init!([usize; 4], [0, 1, 2, 3]);
+
     let energy_tracker = static_init!(
         capsules::energy_tracker::EnergyTracker,
         capsules::energy_tracker::EnergyTracker::new(
-            &mut capsules::energy_tracker::TOTAL_TIME,
-            &mut capsules::energy_tracker::CURRENT_TIME,
-            &mut capsules::energy_tracker::CURRENT_MODE,
-        ));
+            board_kernel.create_grant(&memory_allocation_capability)
+        )
+    );
 
-    let led = components::led::LedsComponent::new(components::led_component_helper!(
-        LedLow<'static, nrf52840::gpio::GPIOPin>,
-        LedLow::new(&nrf52840_peripherals.gpio_port[LED1_PIN]),
-        LedLow::new(&nrf52840_peripherals.gpio_port[LED2_PIN]),
-        LedLow::new(&nrf52840_peripherals.gpio_port[LED3_PIN]),
-        LedLow::new(&nrf52840_peripherals.gpio_port[LED4_PIN]),
-    ), energy_tracker)
+    let led = components::led::LedsComponent::new(
+        components::led_component_helper!(
+            LedLow<'static, nrf52840::gpio::GPIOPin>,
+            LedLow::new(&nrf52840_peripherals.gpio_port[LED1_PIN]),
+            LedLow::new(&nrf52840_peripherals.gpio_port[LED2_PIN]),
+            LedLow::new(&nrf52840_peripherals.gpio_port[LED3_PIN]),
+            LedLow::new(&nrf52840_peripherals.gpio_port[LED4_PIN]),
+        ),
+        led_component_ids,
+        energy_tracker,
+    )
     .finalize(components::led_component_buf!(
         LedLow<'static, nrf52840::gpio::GPIOPin>
     ));
@@ -325,12 +337,6 @@ pub unsafe fn main() {
     )
     .finalize(());
 
-    // Create capabilities that the board needs to call certain protected kernel
-    // functions.
-    let process_management_capability =
-        create_capability!(capabilities::ProcessManagementCapability);
-    let main_loop_capability = create_capability!(capabilities::MainLoopCapability);
-    let memory_allocation_capability = create_capability!(capabilities::MemoryAllocationCapability);
     let gpio_port = &nrf52840_peripherals.gpio_port;
     // Configure kernel debug gpios as early as possible
     kernel::debug::assign_gpios(

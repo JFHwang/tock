@@ -1,99 +1,53 @@
-//use kernel::hil::time::Ticks;
-use kernel::common::cells::TakeCell;
-use kernel::state_tracker;
 use kernel::debug;
-
-///// Syscall driver number.
-//use crate::driver;
-//pub const DRIVER_NUM: usize = driver::NUM::Accel as usize;
-
-/*
-enum PeripheralStates {
-    LED,
-    StateCount,
-}
-*/
-
-pub static mut TOTAL_TIME: [u32; 4] = [0; 4]; // state_tracker::PeripheralStates::StateCount],
-pub static mut CURRENT_TIME: [u32; 4] = [0; 4]; // state_tracker::PeripheralStates::StateCount],
-pub static mut CURRENT_MODE: [u32; 4] = [0; 4]; // state_tracker::PeripheralStates::StateCount],
+use kernel::hil::energy_tracker::{PowerState, PowerStateTracker, MAX_COMPONENT_NUM};
+use kernel::{Grant, ProcessId};
 
 pub struct EnergyTracker {
-//pub struct EnergyTracker<'a> {
-    total_time: TakeCell<'static, [u32]>,
-    current_time: TakeCell<'static, [u32]>,
-    current_mode: TakeCell<'static, [u32]>,
-//    tt_in_progress: Cell<bool>,
-//    ct_in_progress: Cell<bool>,
-//    cm_in_progress: Cell<bool>,
-    //grants: Grant<App>,
+    grants: Grant<App>,
 }
-/*
-#[derive(Default)]
+
 pub struct App {
-    total_time: [u32; PeripheralStates::StateCount],
+    total_energy_consumed: f32,
+    power_state_records: [PowerStateRecord; MAX_COMPONENT_NUM],
 }
-*/
 
+#[derive(Clone, Copy)]
+pub struct PowerStateRecord {
+    power_state: PowerState,
+    start_time: f32, // TODO: change to a time-specific type
+}
 
-//pub struct AccelerateDriver<'a, A: Accelerate
+impl EnergyTracker {
+    pub fn new(grants: Grant<App>) -> Self {
+        Self { grants }
+    }
+}
 
-impl<'a> EnergyTracker {
-    pub fn new(
-        tt: &'static mut [u32],
-        ct: &'static mut [u32],
-        cm: &'static mut [u32],
-    ) -> EnergyTracker {
-        EnergyTracker {
-            total_time: TakeCell::new(tt),
-            current_time: TakeCell::new(ct),
-            current_mode: TakeCell::new(cm),
-//            tt_in_progress: Cell::new(false),
-//            ct_in_progress: Cell::new(false),
-//            cm_in_progress: Cell::new(false),
+impl PowerStateTracker for EnergyTracker {
+    fn set_power_state(&self, component_id: usize, app_id: ProcessId, state: PowerState) {
+        debug!(
+            "App {} sets component {}'s power state to be {}",
+            app_id.id(),
+            component_id,
+            state,
+        );
+    }
+}
+
+impl Default for App {
+    fn default() -> Self {
+        Self {
+            total_energy_consumed: 0.0,
+            power_state_records: [PowerStateRecord::default(); MAX_COMPONENT_NUM],
         }
     }
 }
 
-impl<'a> state_tracker::StateTracker for EnergyTracker {
-
-    fn track_on(&self, state: usize, component_id: usize, pid: usize) {
-//        let cur_time = self.now().into_u32;
-//        debug!("Peripheral {} is on at time {}", state, cur_time);
-
-        self.current_mode.map(|buffer| {
-            if buffer[state] == 1 {
-                debug!("LED: {}, pid: {} stays {}.", component_id, pid, buffer[state]);
-            } else {
-                buffer[state] = 1;
-                debug!("LED: {}, pid: {} switched to {}.", component_id, pid, buffer[state]);
-            }
-        });
+impl Default for PowerStateRecord {
+    fn default() -> Self {
+        Self {
+            power_state: PowerState::None,
+            start_time: 0.0,
+        }
     }
-
-
-    fn track_off(&self, state: usize, component_id: usize, pid: usize) {
-//        let cur_time = self.now().into_u32;
-//        debug!("Peripheral {} is off at time {}", state, cur_time);
-
-        self.current_mode.map(|buffer| {
-            if buffer[state] == 0 {
-                debug!("LED: {}, pid: {} stays {}.", component_id, pid, buffer[state]);
-            } else {
-                buffer[state] = 0;
-                debug!("LED: {}, pid: {} switched to {}.", component_id, pid, buffer[state]);
-            }
-        });
-    }
-
-    /*
-    fn energy_tracker_switch(&self, offstate: u32, onstate: u32);
-    fn energy_tracker_init(&self);
-    fn energy_tracker_setval(&self, state: u32, val: u32);
-    fn energy_tracker_gettime(&self, state: u32) -> u32;
-    fn energy_tracker_flush(&self);
-    */
-    
 }
-
-
