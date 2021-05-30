@@ -119,6 +119,9 @@ const DEFAULT_CTX_PREFIX: [u8; 16] = [0x0 as u8; 16]; //Context for 6LoWPAN Comp
 /// Debug Writer
 pub mod io;
 
+// Pre-defined power model used to configure power tracker
+mod power_model;
+
 // Whether to use UART debugging or Segger RTT (USB) debugging.
 // - Set to false to use UART.
 // - Set to true to use Segger RTT over USB.
@@ -254,10 +257,14 @@ pub unsafe fn main() {
     let alarm = components::alarm::AlarmDriverComponent::new(board_kernel, mux_alarm)
         .finalize(components::alarm_component_helper!(nrf52840::rtc::Rtc));
 
-    let energy_tracker =
-        components::energy_tracker::EnergyTrackerComponent::new(board_kernel, mux_alarm).finalize(
-            components::energy_tracker_component_buf!(nrf52840::rtc::Rtc),
-        );
+    let energy_tracker = components::energy_tracker::EnergyTrackerComponent::new(
+        board_kernel,
+        mux_alarm,
+        power_model::POWER_MODEL,
+    )
+    .finalize(components::energy_tracker_component_buf!(
+        nrf52840::rtc::Rtc
+    ));
 
     let gpio = components::gpio::GpioComponent::new(
         board_kernel,
@@ -311,7 +318,6 @@ pub unsafe fn main() {
     )
     .finalize(components::button_component_buf!(nrf52840::gpio::GPIOPin));
 
-    let led_component_ids = static_init!([usize; 4], [0, 1, 2, 3]);
     let led = components::led::LedsComponent::new(
         components::led_component_helper!(
             LedLow<'static, nrf52840::gpio::GPIOPin>,
@@ -320,7 +326,7 @@ pub unsafe fn main() {
             LedLow::new(&nrf52840_peripherals.gpio_port[LED3_PIN]),
             LedLow::new(&nrf52840_peripherals.gpio_port[LED4_PIN]),
         ),
-        led_component_ids,
+        power_model::LED_COMPONENT_IDS,
         energy_tracker,
     )
     .finalize(components::led_component_buf!(

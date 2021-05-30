@@ -52,14 +52,14 @@ macro_rules! led_component_buf {
 
 pub struct LedsComponent<L: 'static + Led, ET: 'static + energy_tracker::Track> {
     leds: &'static mut [&'static L],
-    component_ids: &'static mut [usize],
+    component_ids: &'static [usize],
     energy_tracker: &'static ET,
 }
 
 impl<L: 'static + Led, ET: 'static + energy_tracker::Track> LedsComponent<L, ET> {
     pub fn new(
         leds: &'static mut [&'static L],
-        component_ids: &'static mut [usize],
+        component_ids: &'static [usize],
         energy_tracker: &'static ET,
     ) -> Self {
         Self {

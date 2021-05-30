@@ -64,14 +64,14 @@ pub const DRIVER_NUM: usize = driver::NUM::Led as usize;
 /// control them.
 pub struct LedDriver<'a, L: led::Led> {
     leds: TakeCell<'a, [&'a L]>,
-    component_ids: TakeCell<'a, [usize]>,
+    component_ids: &'a [usize],
     power_state_tracker: &'a dyn energy_tracker::Track,
 }
 
 impl<'a, L: led::Led> LedDriver<'a, L> {
     pub fn new(
         leds: &'a mut [&'a L],
-        component_ids: &'a mut [usize],
+        component_ids: &'a [usize],
         power_state_tracker: &'a dyn energy_tracker::Track,
     ) -> Self {
         // Initialize all LEDs and turn them off
@@ -82,18 +82,14 @@ impl<'a, L: led::Led> LedDriver<'a, L> {
 
         Self {
             leds: TakeCell::new(leds),
-            component_ids: TakeCell::new(component_ids),
+            component_ids: component_ids,
             power_state_tracker: power_state_tracker,
         }
     }
 
     fn set_power_state(&self, led_index: usize, app_id: ProcessId, state: PowerState) {
-        self.component_ids
-            .map(|component_ids| {
-                self.power_state_tracker
-                    .set_power_state(component_ids[led_index], app_id, state);
-            })
-            .expect("Componet IDs slice taken")
+        self.power_state_tracker
+            .set_power_state(self.component_ids[led_index], app_id, state);
     }
 }
 

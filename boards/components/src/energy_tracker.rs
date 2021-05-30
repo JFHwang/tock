@@ -5,6 +5,7 @@ use capsules::virtual_alarm::{MuxAlarm, VirtualMuxAlarm};
 use kernel::capabilities;
 use kernel::component::Component;
 use kernel::create_capability;
+use kernel::hil::energy_tracker::PowerModel;
 use kernel::hil::time::Alarm;
 use kernel::static_init_half;
 
@@ -24,16 +25,19 @@ macro_rules! energy_tracker_component_buf {
 pub struct EnergyTrackerComponent<A: 'static + Alarm<'static>> {
     board_kernel: &'static kernel::Kernel,
     mux_alarm: &'static MuxAlarm<'static, A>,
+    power_model: &'static dyn PowerModel,
 }
 
 impl<A: 'static + Alarm<'static>> EnergyTrackerComponent<A> {
     pub fn new(
         board_kernel: &'static kernel::Kernel,
         mux_alarm: &'static MuxAlarm<'static, A>,
+        power_model: &'static dyn PowerModel,
     ) -> Self {
         Self {
             board_kernel,
             mux_alarm,
+            power_model,
         }
     }
 }
@@ -60,6 +64,7 @@ impl<A: 'static + Alarm<'static>> Component for EnergyTrackerComponent<A> {
             EnergyTracker::new(
                 energy_tracker_virtual_alarm,
                 self.board_kernel.create_grant(&grant_cap),
+                self.power_model,
             )
         );
 
