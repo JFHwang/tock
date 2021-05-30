@@ -1,7 +1,9 @@
 use kernel::hil::energy_tracker::{Energy, PowerState, Query, Track, MAX_COMPONENT_NUM};
+use kernel::hil::time::Alarm;
 use kernel::{Grant, ProcessId};
 
-pub struct EnergyTracker {
+pub struct EnergyTracker<'a, A: Alarm<'a>> {
+    alarm: &'a A,
     grants: Grant<App>,
 }
 
@@ -17,13 +19,13 @@ pub struct PowerStateRecord {
     start_time: f32, // TODO: change to a time-specific type
 }
 
-impl EnergyTracker {
-    pub fn new(grants: Grant<App>) -> Self {
-        Self { grants }
+impl<'a, A: Alarm<'a>> EnergyTracker<'a, A> {
+    pub fn new(alarm: &'a A, grants: Grant<App>) -> Self {
+        Self { alarm, grants }
     }
 }
 
-impl Track for EnergyTracker {
+impl<'a, A: Alarm<'a>> Track for EnergyTracker<'a, A> {
     fn set_power_state(&self, component_id: usize, app_id: ProcessId, power_state: PowerState) {
         self.grants.each(|_, app| {
             app.power_state_records[component_id].power_state = power_state;
@@ -31,7 +33,7 @@ impl Track for EnergyTracker {
     }
 }
 
-impl Query for EnergyTracker {
+impl<'a, A: Alarm<'a>> Query for EnergyTracker<'a, A> {
     fn query_app_energy_consumption(&self, app_id: ProcessId) -> Energy {
         self.grants
             .enter(app_id, |app| app.total_energy_consumed_freeze)

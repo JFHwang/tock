@@ -15,6 +15,7 @@
 use capsules::led::LedDriver;
 use core::mem::MaybeUninit;
 use kernel::component::Component;
+use kernel::hil::energy_tracker;
 use kernel::hil::led::Led;
 use kernel::static_init_half;
 
@@ -49,17 +50,17 @@ macro_rules! led_component_buf {
     };};
 }
 
-pub struct LedsComponent<L: 'static + Led> {
+pub struct LedsComponent<L: 'static + Led, ET: 'static + energy_tracker::Track> {
     leds: &'static mut [&'static L],
     component_ids: &'static mut [usize],
-    energy_tracker: &'static capsules::energy_tracker::EnergyTracker,
+    energy_tracker: &'static ET,
 }
 
-impl<L: 'static + Led> LedsComponent<L> {
+impl<L: 'static + Led, ET: 'static + energy_tracker::Track> LedsComponent<L, ET> {
     pub fn new(
         leds: &'static mut [&'static L],
         component_ids: &'static mut [usize],
-        energy_tracker: &'static capsules::energy_tracker::EnergyTracker,
+        energy_tracker: &'static ET,
     ) -> Self {
         Self {
             leds,
@@ -69,7 +70,7 @@ impl<L: 'static + Led> LedsComponent<L> {
     }
 }
 
-impl<L: 'static + Led> Component for LedsComponent<L> {
+impl<L: 'static + Led, ET: 'static + energy_tracker::Track> Component for LedsComponent<L, ET> {
     type StaticInput = &'static mut MaybeUninit<LedDriver<'static, L>>;
     type Output = &'static LedDriver<'static, L>;
 

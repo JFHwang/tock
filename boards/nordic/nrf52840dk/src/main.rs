@@ -247,6 +247,18 @@ pub unsafe fn main() {
     let main_loop_capability = create_capability!(capabilities::MainLoopCapability);
     let memory_allocation_capability = create_capability!(capabilities::MemoryAllocationCapability);
 
+    let rtc = &base_peripherals.rtc;
+    let _ = rtc.start();
+    let mux_alarm = components::alarm::AlarmMuxComponent::new(rtc)
+        .finalize(components::alarm_mux_component_helper!(nrf52840::rtc::Rtc));
+    let alarm = components::alarm::AlarmDriverComponent::new(board_kernel, mux_alarm)
+        .finalize(components::alarm_component_helper!(nrf52840::rtc::Rtc));
+
+    let energy_tracker =
+        components::energy_tracker::EnergyTrackerComponent::new(board_kernel, mux_alarm).finalize(
+            components::energy_tracker_component_buf!(nrf52840::rtc::Rtc),
+        );
+
     let gpio = components::gpio::GpioComponent::new(
         board_kernel,
         components::gpio_component_helper!(
@@ -300,14 +312,6 @@ pub unsafe fn main() {
     .finalize(components::button_component_buf!(nrf52840::gpio::GPIOPin));
 
     let led_component_ids = static_init!([usize; 4], [0, 1, 2, 3]);
-
-    let energy_tracker = static_init!(
-        capsules::energy_tracker::EnergyTracker,
-        capsules::energy_tracker::EnergyTracker::new(
-            board_kernel.create_grant(&memory_allocation_capability)
-        )
-    );
-
     let led = components::led::LedsComponent::new(
         components::led_component_helper!(
             LedLow<'static, nrf52840::gpio::GPIOPin>,
@@ -344,13 +348,6 @@ pub unsafe fn main() {
         Some(&gpio_port[LED2_PIN]),
         Some(&gpio_port[LED3_PIN]),
     );
-
-    let rtc = &base_peripherals.rtc;
-    let _ = rtc.start();
-    let mux_alarm = components::alarm::AlarmMuxComponent::new(rtc)
-        .finalize(components::alarm_mux_component_helper!(nrf52840::rtc::Rtc));
-    let alarm = components::alarm::AlarmDriverComponent::new(board_kernel, mux_alarm)
-        .finalize(components::alarm_component_helper!(nrf52840::rtc::Rtc));
 
     let channel = nrf52_components::UartChannelComponent::new(
         uart_channel,
