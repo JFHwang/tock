@@ -8,7 +8,7 @@ pub const MAX_COMPONENT_NUM: usize = 10;
 pub type Energy = f32;
 pub type Power = f32;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Eq, PartialEq)]
 pub enum PowerState {
     None,
     CpuOff,
@@ -40,6 +40,5 @@ pub trait Track {
 
 pub trait Query {
     fn query_app_energy_consumption(&self, app_id: ProcessId) -> Energy;
-    fn freeze(&self, app_id: ProcessId);
     fn freeze_all(&self);
 }

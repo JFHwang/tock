@@ -260,6 +260,7 @@ impl<'a, C: ProcessManagementCapability> ProcessConsole<'a, C> {
                                 );
                             });
                         } else if clean_str.starts_with("list") {
+                            self.energy_tracker.freeze_all();
                             debug!(" PID    Name                Quanta  Syscalls  Dropped Upcalls  Restarts    State  Grants  Energy");
                             self.kernel
                                 .process_each_capability(&self.capability, |proc| {

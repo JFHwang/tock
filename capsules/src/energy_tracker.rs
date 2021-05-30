@@ -41,9 +41,26 @@ impl<'a, A: Alarm<'a>> EnergyTracker<'a, A> {
 impl<'a, A: Alarm<'a>> Track for EnergyTracker<'a, A> {
     fn set_power_state(&self, component_id: usize, app_id: ProcessId, power_state: PowerState) {
         let now_in_ms = self.now_in_ms();
-        self.grants.each(|_, app| {
-            app.power_state_records[component_id].power_state = power_state;
+        self.grants.each(|grant_app_id, app| {
+            // Update consumed energy
+            let power = self.power_model.get_power(
+                component_id,
+                app.power_state_records[component_id].power_state,
+            );
+            let time = (now_in_ms - app.power_state_records[component_id].start_time_in_ms) as f32;
+            app.total_energy_consumed += power * time;
             app.power_state_records[component_id].start_time_in_ms = now_in_ms;
+
+            //  Update power state records
+            if grant_app_id == app_id {
+                // For the app that sets the new power state, update the power state directly.
+                app.power_state_records[component_id].power_state = power_state;
+            } else if app.power_state_records[component_id].power_state != power_state {
+                // For the app that doesn't set the new power state,
+                // if the new power state is not the same,
+                // regard this app as not using this component any more.
+                app.power_state_records[component_id].power_state = PowerState::None;
+            }
         });
     }
 }
@@ -52,19 +69,33 @@ impl<'a, A: Alarm<'a>> Query for EnergyTracker<'a, A> {
     fn query_app_energy_consumption(&self, app_id: ProcessId) -> Energy {
         self.grants
             .enter(app_id, |app| app.total_energy_consumed_freeze)
-            .unwrap_or(Energy::default())
+            .unwrap_or(0.0)
     }
 
-    fn freeze(&self, app_id: ProcessId) {}
-
-    fn freeze_all(&self) {}
+    fn freeze_all(&self) {
+        let now_in_ms = self.now_in_ms();
+        self.grants.each(|_, app| {
+            for component_id in 0..MAX_COMPONENT_NUM {
+                // Update consumed energy
+                let power = self.power_model.get_power(
+                    component_id,
+                    app.power_state_records[component_id].power_state,
+                );
+                let time =
+                    (now_in_ms - app.power_state_records[component_id].start_time_in_ms) as f32;
+                app.total_energy_consumed += power * time;
+                app.power_state_records[component_id].start_time_in_ms = now_in_ms;
+            }
+            app.total_energy_consumed_freeze = app.total_energy_consumed;
+        });
+    }
 }
 
 impl Default for App {
     fn default() -> Self {
         Self {
-            total_energy_consumed_freeze: Energy::default(),
-            total_energy_consumed: Energy::default(),
+            total_energy_consumed_freeze: 0.0,
+            total_energy_consumed: 0.0,
             power_state_records: [PowerStateRecord::default(); MAX_COMPONENT_NUM],
         }
     }
