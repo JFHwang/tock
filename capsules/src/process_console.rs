@@ -261,7 +261,7 @@ impl<'a, C: ProcessManagementCapability> ProcessConsole<'a, C> {
                             });
                         } else if clean_str.starts_with("list") {
                             self.energy_tracker.freeze_all();
-                            debug!(" PID    Name                Quanta  Syscalls  Dropped Upcalls  Restarts    State  Grants  Energy");
+                            debug!(" PID    Name                Quanta  Syscalls  Dropped Upcalls  Restarts    State  Grants  Energy\tTotal Energy\tLED1\tLED2\tLED3\tLED4");
                             self.kernel
                                 .process_each_capability(&self.capability, |proc| {
                                     let info: KernelInfo = KernelInfo::new(self.kernel);
@@ -270,9 +270,14 @@ impl<'a, C: ProcessManagementCapability> ProcessConsole<'a, C> {
                                     let appid = proc.processid();
                                     let (grants_used, grants_total) = info.number_app_grant_uses(appid, &self.capability);
                                     let energy_consumed = self.energy_tracker.query_app_energy_consumption(appid);
+                                    let total_energy = self.energy_tracker.query_total_energy_consumption();
+                                    let led0_energy = self.energy_tracker.query_peripheral_energy_consumption(0);
+                                    let led1_energy = self.energy_tracker.query_peripheral_energy_consumption(1);
+                                    let led2_energy = self.energy_tracker.query_peripheral_energy_consumption(2);
+                                    let led3_energy = self.energy_tracker.query_peripheral_energy_consumption(3);
 
                                     debug!(
-                                        "  {:?}\t{:<20}{:6}{:10}{:17}{:10}  {:?}{:5}/{}  {:>6.2}",
+                                        "  {:?}\t{:<20}{:6}{:10}{:17}{:10}  {:?}{:5}/{}  {:>6.2}\t{:>5.1}\t{:>5.1}\t{:>5.1}\t{:>5.1}\t{:>5.1}",
                                         appid,
                                         pname,
                                         proc.debug_timeslice_expiration_count(),
@@ -283,6 +288,11 @@ impl<'a, C: ProcessManagementCapability> ProcessConsole<'a, C> {
                                         grants_used,
                                         grants_total,
                                         energy_consumed,
+                                        total_energy,
+                                        led0_energy,
+                                        led1_energy,
+                                        led2_energy,
+                                        led3_energy,
                                     );
                                 });
                         } else if clean_str.starts_with("status") {
