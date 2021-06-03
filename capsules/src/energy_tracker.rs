@@ -1,12 +1,15 @@
+use kernel::common::cells::TakeCell;
 use kernel::hil::energy_tracker::{
     Energy, PowerModel, PowerState, Query, Track, MAX_COMPONENT_NUM,
 };
-use kernel::common::cells::TakeCell;
 use kernel::hil::time::{Alarm, Frequency, Ticks};
 use kernel::{Grant, ProcessId};
 
-pub static mut TOTAL_TIME_TABLE: [Energy; MAX_COMPONENT_NUM] = [0.0; MAX_COMPONENT_NUM]; 
-pub static mut POWER_STATE_TABLE: [PowerStateRecord; MAX_COMPONENT_NUM] = [PowerStateRecord {power_state: PowerState::None, start_time_in_ms: 0}; MAX_COMPONENT_NUM]; 
+pub static mut TOTAL_TIME_TABLE: [Energy; MAX_COMPONENT_NUM] = [0.0; MAX_COMPONENT_NUM];
+pub static mut POWER_STATE_TABLE: [PowerStateRecord; MAX_COMPONENT_NUM] = [PowerStateRecord {
+    power_state: PowerState::None,
+    start_time_in_ms: 0,
+}; MAX_COMPONENT_NUM];
 
 pub struct EnergyTracker<'a, A: Alarm<'a>> {
     alarm: &'a A,
@@ -29,11 +32,13 @@ pub struct PowerStateRecord {
 }
 
 impl<'a, A: Alarm<'a>> EnergyTracker<'a, A> {
-    pub fn new(alarm: &'a A, 
-               grants: Grant<App>, 
-               power_model: &'a dyn PowerModel, 
-               total_energy_consumed: &'static mut [Energy],
-               power_state_records: &'static mut [PowerStateRecord],) -> Self {
+    pub fn new(
+        alarm: &'a A,
+        grants: Grant<App>,
+        power_model: &'a dyn PowerModel,
+        total_energy_consumed: &'static mut [Energy],
+        power_state_records: &'static mut [PowerStateRecord],
+    ) -> Self {
         Self {
             alarm,
             grants,
@@ -57,10 +62,9 @@ impl<'a, A: Alarm<'a>> Track for EnergyTracker<'a, A> {
         // Perform updates on global power table
         self.total_energy_consumed.map(|energy_table| {
             self.power_state_records.map(|state_table| {
-                let power = self.power_model.get_power(
-                    component_id,
-                    state_table[component_id].power_state,
-                );
+                let power = self
+                    .power_model
+                    .get_power(component_id, state_table[component_id].power_state);
                 let time = (now_in_ms - state_table[component_id].start_time_in_ms) as f32;
                 energy_table[component_id] += power * time;
                 state_table[component_id].start_time_in_ms = now_in_ms;
@@ -96,7 +100,7 @@ impl<'a, A: Alarm<'a>> Track for EnergyTracker<'a, A> {
 
 impl<'a, A: Alarm<'a>> Query for EnergyTracker<'a, A> {
     fn query_total_energy_consumption(&self) -> Energy {
-        let mut sum : Energy = 0.0;
+        let mut sum: Energy = 0.0;
         self.total_energy_consumed.map(|table| {
             for component_id in 0..MAX_COMPONENT_NUM {
                 sum += table[component_id];
@@ -106,7 +110,7 @@ impl<'a, A: Alarm<'a>> Query for EnergyTracker<'a, A> {
     }
 
     fn query_peripheral_energy_consumption(&self, component_id: usize) -> Energy {
-        let mut value : Energy = 0.0;
+        let mut value: Energy = 0.0;
         self.total_energy_consumed.map(|table| {
             value = table[component_id];
         });
