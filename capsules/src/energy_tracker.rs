@@ -1,3 +1,5 @@
+use core::cell::Cell;
+use core::cmp;
 use kernel::common::cells::TakeCell;
 use kernel::hil::energy_tracker::{
     Energy, PowerModel, PowerState, Query, Track, MAX_COMPONENT_NUM,
@@ -51,6 +53,7 @@ pub struct EnergyTracker<'a, A: Alarm<'a>> {
     grants: Grant<App>,
     power_model: &'a dyn PowerModel,
     energy_states: TakeCell<'static, [EnergyState]>,
+    n_component: Cell<usize>,
 }
 
 impl<'a, A: Alarm<'a>> EnergyTracker<'a, A> {
@@ -65,6 +68,7 @@ impl<'a, A: Alarm<'a>> EnergyTracker<'a, A> {
             grants,
             power_model,
             energy_states: TakeCell::new(energy_states),
+            n_component: Cell::new(0),
         }
     }
 
@@ -94,6 +98,10 @@ impl<'a, A: Alarm<'a>> EnergyTracker<'a, A> {
 impl<'a, A: Alarm<'a>> Track for EnergyTracker<'a, A> {
     fn set_power_state(&self, component_id: usize, app_id: ProcessId, power_state: PowerState) {
         let now_in_ms = self.now_in_ms();
+
+        // Keep track of the actual number of components in use
+        self.n_component
+            .set(cmp::max(self.n_component.get(), component_id + 1));
 
         // Update global energy states
         self.energy_states.map(|energy_states| {
@@ -129,7 +137,7 @@ impl<'a, A: Alarm<'a>> Query for EnergyTracker<'a, A> {
     fn query_total_energy_consumption(&self) -> Energy {
         let mut total_energy_consumed: Energy = 0.0;
         self.energy_states.map(|energy_states| {
-            for component_id in 0..MAX_COMPONENT_NUM {
+            for component_id in 0..self.n_component.get() {
                 total_energy_consumed += energy_states[component_id].energy_consumed;
             }
         });
@@ -154,7 +162,7 @@ impl<'a, A: Alarm<'a>> Query for EnergyTracker<'a, A> {
         let now_in_ms = self.now_in_ms();
         self.grants.each(|_, app| {
             app.total_energy_consumed = 0.0;
-            for component_id in 0..MAX_COMPONENT_NUM {
+            for component_id in 0..self.n_component.get() {
                 let power_state = app.energy_states[component_id].power_state;
                 self.update_energy_state(
                     &mut app.energy_states[component_id],
