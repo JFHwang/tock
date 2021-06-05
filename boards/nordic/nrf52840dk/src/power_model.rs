@@ -11,22 +11,22 @@ impl PowerModel for BoardPowerModel {
         match component_id {
             // Led 0
             0 => match power_state {
-                PowerState::LedOn => 1.0,
+                PowerState::LedOn => 11.914, // mW = 2.3 mA * 5.180V
                 _ => 0.0,
             },
             // Led 1
             1 => match power_state {
-                PowerState::LedOn => 1.0,
+                PowerState::LedOn => 11.914,
                 _ => 0.0,
             },
             // Led 2
             2 => match power_state {
-                PowerState::LedOn => 1.0,
+                PowerState::LedOn => 11.914,
                 _ => 0.0,
             },
             // Led 3
             3 => match power_state {
-                PowerState::LedOn => 1.0,
+                PowerState::LedOn => 11.914,
                 _ => 0.0,
             },
             // This shouldn't happen

@@ -87,9 +87,9 @@ impl<'a, A: Alarm<'a>> EnergyTracker<'a, A> {
     ) {
         let power = self
             .power_model
-            .get_power(component_id, energy_state.power_state);
-        let duration = (time_in_ms - energy_state.start_time_in_ms) as f32;
-        energy_state.energy_consumed += power * duration;
+            .get_power(component_id, energy_state.power_state); // in mW
+        let duration = (time_in_ms - energy_state.start_time_in_ms) as f32; // in ms
+        energy_state.energy_consumed += power * duration / 1000.0; // in mJ
         energy_state.power_state = power_state;
         energy_state.start_time_in_ms = time_in_ms;
     }
