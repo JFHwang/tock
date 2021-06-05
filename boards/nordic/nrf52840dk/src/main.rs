@@ -261,6 +261,7 @@ pub unsafe fn main() {
         board_kernel,
         mux_alarm,
         power_model::POWER_MODEL,
+        power_model::COMPONENT_NUM,
     )
     .finalize(components::energy_tracker_component_buf!(
         nrf52840::rtc::Rtc

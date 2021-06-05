@@ -1,5 +1,4 @@
 use core::cell::Cell;
-use core::cmp;
 use kernel::common::cells::TakeCell;
 use kernel::hil::energy_tracker::{
     Energy, PowerModel, PowerState, Query, Track, MAX_COMPONENT_NUM,
@@ -53,7 +52,7 @@ pub struct EnergyTracker<'a, A: Alarm<'a>> {
     grants: Grant<App>,
     power_model: &'a dyn PowerModel,
     energy_states: TakeCell<'static, [EnergyState]>,
-    n_component: Cell<usize>,
+    component_num: Cell<usize>,
 }
 
 impl<'a, A: Alarm<'a>> EnergyTracker<'a, A> {
@@ -62,13 +61,14 @@ impl<'a, A: Alarm<'a>> EnergyTracker<'a, A> {
         grants: Grant<App>,
         power_model: &'a dyn PowerModel,
         energy_states: &'static mut [EnergyState],
+        component_num: usize,
     ) -> Self {
         Self {
             alarm,
             grants,
             power_model,
             energy_states: TakeCell::new(energy_states),
-            n_component: Cell::new(0),
+            component_num: Cell::new(component_num),
         }
     }
 
@@ -98,10 +98,6 @@ impl<'a, A: Alarm<'a>> EnergyTracker<'a, A> {
 impl<'a, A: Alarm<'a>> Track for EnergyTracker<'a, A> {
     fn set_power_state(&self, app_id: ProcessId, component_id: usize, power_state: PowerState) {
         let now_in_ms = self.now_in_ms();
-
-        // Keep track of the actual number of components in use
-        self.n_component
-            .set(cmp::max(self.n_component.get(), component_id + 1));
 
         // Update global energy states
         self.energy_states.map(|energy_states| {
@@ -134,22 +130,16 @@ impl<'a, A: Alarm<'a>> Track for EnergyTracker<'a, A> {
 }
 
 impl<'a, A: Alarm<'a>> Query for EnergyTracker<'a, A> {
-    fn query_total_energy_consumption(&self) -> Energy {
-        let mut total_energy_consumed: Energy = 0.0;
-        self.energy_states.map(|energy_states| {
-            for component_id in 0..self.n_component.get() {
-                total_energy_consumed += energy_states[component_id].energy_consumed;
+    fn freeze_all(&self) {
+        let now_in_ms = self.now_in_ms();
+        self.grants.each(|_, app| {
+            app.total_energy_consumed = 0.0;
+            for cid in 0..self.component_num.get() {
+                let power_state = app.energy_states[cid].power_state;
+                self.update_energy_state(&mut app.energy_states[cid], cid, power_state, now_in_ms);
+                app.total_energy_consumed += app.energy_states[cid].energy_consumed;
             }
         });
-        total_energy_consumed
-    }
-
-    fn query_peripheral_energy_consumption(&self, component_id: usize) -> Energy {
-        let mut energy_consumed: Energy = 0.0;
-        self.energy_states.map(|energy_states| {
-            energy_consumed = energy_states[component_id].energy_consumed;
-        });
-        energy_consumed
     }
 
     fn query_app_energy_consumption(&self, app_id: ProcessId) -> Energy {
@@ -158,20 +148,25 @@ impl<'a, A: Alarm<'a>> Query for EnergyTracker<'a, A> {
             .unwrap_or(0.0)
     }
 
-    fn freeze_all(&self) {
-        let now_in_ms = self.now_in_ms();
-        self.grants.each(|_, app| {
-            app.total_energy_consumed = 0.0;
-            for component_id in 0..self.n_component.get() {
-                let power_state = app.energy_states[component_id].power_state;
-                self.update_energy_state(
-                    &mut app.energy_states[component_id],
-                    component_id,
-                    power_state,
-                    now_in_ms,
-                );
-                app.total_energy_consumed += app.energy_states[component_id].energy_consumed;
+    fn query_component_energy_consumption(&self, cid: usize) -> Energy {
+        let mut energy_consumed: Energy = 0.0;
+        self.energy_states.map(|energy_states| {
+            energy_consumed = energy_states[cid].energy_consumed;
+        });
+        energy_consumed
+    }
+
+    fn query_component_num(&self) -> usize {
+        self.component_num.get()
+    }
+
+    fn query_total_energy_consumption(&self) -> Energy {
+        let mut total_energy_consumed: Energy = 0.0;
+        self.energy_states.map(|energy_states| {
+            for cid in 0..self.component_num.get() {
+                total_energy_consumed += energy_states[cid].energy_consumed;
             }
         });
+        total_energy_consumed
     }
 }

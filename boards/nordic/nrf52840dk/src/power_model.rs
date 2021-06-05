@@ -1,7 +1,7 @@
 use kernel::hil::energy_tracker::{Power, PowerModel, PowerState};
 
+pub const COMPONENT_NUM: usize = 4;
 pub const LED_COMPONENT_IDS: &'static [usize] = &[0, 1, 2, 3];
-
 pub const POWER_MODEL: &'static BoardPowerModel = &BoardPowerModel {};
 
 pub struct BoardPowerModel {}

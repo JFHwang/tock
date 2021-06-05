@@ -8,12 +8,9 @@ pub const MAX_COMPONENT_NUM: usize = 10;
 pub type Energy = f32;
 pub type Power = f32;
 
-#[derive(Clone, Copy, Eq, PartialEq)]
+#[derive(Clone, Copy, PartialEq)]
 pub enum PowerState {
     None,
-    CpuOff,
-    CpuOn,
-    LedOff,
     LedOn,
 }
 
@@ -21,9 +18,6 @@ impl Display for PowerState {
     fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
         let display_str = match *self {
             PowerState::None => "None",
-            PowerState::CpuOff => "CpuOff",
-            PowerState::CpuOn => "CpuOn",
-            PowerState::LedOff => "LedOff",
             PowerState::LedOn => "LedOn",
         };
         write!(fmt, "{}", display_str)
@@ -39,8 +33,9 @@ pub trait Track {
 }
 
 pub trait Query {
-    fn query_total_energy_consumption(&self) -> Energy;
-    fn query_peripheral_energy_consumption(&self, component_id: usize) -> Energy;
-    fn query_app_energy_consumption(&self, app_id: ProcessId) -> Energy;
     fn freeze_all(&self);
+    fn query_app_energy_consumption(&self, app_id: ProcessId) -> Energy;
+    fn query_component_energy_consumption(&self, component_id: usize) -> Energy;
+    fn query_component_num(&self) -> usize;
+    fn query_total_energy_consumption(&self) -> Energy;
 }

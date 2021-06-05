@@ -138,7 +138,7 @@ impl<L: led::Led> Driver for LedDriver<'_, L> {
                             CommandReturn::failure(ErrorCode::INVAL) /* led out of range */
                         } else {
                             leds[data].off();
-                            self.set_power_state(app_id, data, PowerState::LedOff);
+                            self.set_power_state(app_id, data, PowerState::None);
                             CommandReturn::success()
                         }
                     }
@@ -152,7 +152,7 @@ impl<L: led::Led> Driver for LedDriver<'_, L> {
                             if leds[data].read() {
                                 self.set_power_state(app_id, data, PowerState::LedOn);
                             } else {
-                                self.set_power_state(app_id, data, PowerState::LedOff);
+                                self.set_power_state(app_id, data, PowerState::None);
                             }
                             CommandReturn::success()
                         }

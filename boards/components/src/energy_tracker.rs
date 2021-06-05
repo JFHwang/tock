@@ -26,6 +26,7 @@ pub struct EnergyTrackerComponent<A: 'static + Alarm<'static>> {
     board_kernel: &'static kernel::Kernel,
     mux_alarm: &'static MuxAlarm<'static, A>,
     power_model: &'static dyn PowerModel,
+    component_num: usize,
 }
 
 impl<A: 'static + Alarm<'static>> EnergyTrackerComponent<A> {
@@ -33,11 +34,13 @@ impl<A: 'static + Alarm<'static>> EnergyTrackerComponent<A> {
         board_kernel: &'static kernel::Kernel,
         mux_alarm: &'static MuxAlarm<'static, A>,
         power_model: &'static dyn PowerModel,
+        component_num: usize,
     ) -> Self {
         Self {
             board_kernel,
             mux_alarm,
             power_model,
+            component_num,
         }
     }
 }
@@ -66,6 +69,7 @@ impl<A: 'static + Alarm<'static>> Component for EnergyTrackerComponent<A> {
                 self.board_kernel.create_grant(&grant_cap),
                 self.power_model,
                 &mut capsules::energy_tracker::ENERGY_STATES,
+                self.component_num,
             )
         );
 

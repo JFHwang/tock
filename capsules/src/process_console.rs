@@ -260,8 +260,7 @@ impl<'a, C: ProcessManagementCapability> ProcessConsole<'a, C> {
                                 );
                             });
                         } else if clean_str.starts_with("list") {
-                            self.energy_tracker.freeze_all();
-                            debug!(" PID    Name                Quanta  Syscalls  Dropped Upcalls  Restarts    State  Grants  Energy\tTotal Energy\tLED1\tLED2\tLED3\tLED4");
+                            debug!(" PID    Name                Quanta  Syscalls  Dropped Upcalls  Restarts    State  Grants");
                             self.kernel
                                 .process_each_capability(&self.capability, |proc| {
                                     let info: KernelInfo = KernelInfo::new(self.kernel);
@@ -269,15 +268,9 @@ impl<'a, C: ProcessManagementCapability> ProcessConsole<'a, C> {
                                     let pname = proc.get_process_name();
                                     let appid = proc.processid();
                                     let (grants_used, grants_total) = info.number_app_grant_uses(appid, &self.capability);
-                                    let energy_consumed = self.energy_tracker.query_app_energy_consumption(appid);
-                                    let total_energy = self.energy_tracker.query_total_energy_consumption();
-                                    let led0_energy = self.energy_tracker.query_peripheral_energy_consumption(0);
-                                    let led1_energy = self.energy_tracker.query_peripheral_energy_consumption(1);
-                                    let led2_energy = self.energy_tracker.query_peripheral_energy_consumption(2);
-                                    let led3_energy = self.energy_tracker.query_peripheral_energy_consumption(3);
 
                                     debug!(
-                                        "  {:?}\t{:<20}{:6}{:10}{:17}{:10}  {:?}{:5}/{}  {:>6.2}\t{:>5.1}\t{:>5.1}\t{:>5.1}\t{:>5.1}\t{:>5.1}",
+                                        "  {:?}\t{:<20}{:6}{:10}{:17}{:10}  {:?}{:5}/{}",
                                         appid,
                                         pname,
                                         proc.debug_timeslice_expiration_count(),
@@ -287,12 +280,6 @@ impl<'a, C: ProcessManagementCapability> ProcessConsole<'a, C> {
                                         proc.get_state(),
                                         grants_used,
                                         grants_total,
-                                        energy_consumed,
-                                        total_energy,
-                                        led0_energy,
-                                        led1_energy,
-                                        led2_energy,
-                                        led3_energy,
                                     );
                                 });
                         } else if clean_str.starts_with("status") {
@@ -311,6 +298,32 @@ impl<'a, C: ProcessManagementCapability> ProcessConsole<'a, C> {
                             );
                         } else if clean_str.starts_with("panic") {
                             panic!("ProcessConsole forced a kernel panic.");
+                        } else if clean_str.starts_with("tet-report") {
+                            self.energy_tracker.freeze_all();
+                            debug!("Total Energy Consumption: {:.2}", self.energy_tracker.query_total_energy_consumption());
+                            debug!("Per Component Energy Consumption:");
+                            debug!(" CID    Energy Consumption");
+                            for cid in 0..self.energy_tracker.query_component_num() {
+                                let energy_consumption = self.energy_tracker.query_component_energy_consumption(cid);
+                                debug!(
+                                    "  {:?}\t{:>18.2}",
+                                    cid,
+                                    energy_consumption,
+                                )
+                            }
+                            debug!("Per App Energy Consumption:");
+                            debug!(" PID    Name                Energy Consumption");
+                            self.kernel.process_each_capability(&self.capability, |proc| {
+                                let pid = proc.processid();
+                                let pname = proc.get_process_name();
+                                let energy_consumption = self.energy_tracker.query_app_energy_consumption(pid);
+                                debug!(
+                                    "  {:?}\t{:<20}{:>18.2}",
+                                    pid,
+                                    pname,
+                                    energy_consumption,
+                                );
+                            });
                         } else {
                             debug!("Valid commands are: help status list stop start fault");
                         }
