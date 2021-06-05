@@ -132,6 +132,16 @@ impl<'a, A: Alarm<'a>> Track for EnergyTracker<'a, A> {
 impl<'a, A: Alarm<'a>> Query for EnergyTracker<'a, A> {
     fn freeze_all(&self) {
         let now_in_ms = self.now_in_ms();
+
+        // Update global energy states
+        for cid in 0..self.component_num.get() {
+            self.energy_states.map(|energy_states| {
+                let power_state = energy_states[cid].power_state;
+                self.update_energy_state(&mut energy_states[cid], cid, power_state, now_in_ms)
+            });
+        }
+
+        // Update app-specific energy states
         self.grants.each(|_, app| {
             app.total_energy_consumed = 0.0;
             for cid in 0..self.component_num.get() {
