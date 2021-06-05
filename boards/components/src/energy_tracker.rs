@@ -65,8 +65,7 @@ impl<A: 'static + Alarm<'static>> Component for EnergyTrackerComponent<A> {
                 energy_tracker_virtual_alarm,
                 self.board_kernel.create_grant(&grant_cap),
                 self.power_model,
-                &mut capsules::energy_tracker::TOTAL_TIME_TABLE,
-                &mut capsules::energy_tracker::POWER_STATE_TABLE,
+                &mut capsules::energy_tracker::ENERGY_STATES,
             )
         );
 
