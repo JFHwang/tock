@@ -35,7 +35,7 @@ pub trait PowerModel {
 }
 
 pub trait Track {
-    fn set_power_state(&self, component_id: usize, app_id: ProcessId, power_state: PowerState);
+    fn set_power_state(&self, app_id: ProcessId, component_id: usize, power_state: PowerState);
 }
 
 pub trait Query {

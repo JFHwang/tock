@@ -87,9 +87,12 @@ impl<'a, L: led::Led> LedDriver<'a, L> {
         }
     }
 
-    fn set_power_state(&self, led_index: usize, app_id: ProcessId, state: PowerState) {
-        self.power_state_tracker
-            .set_power_state(self.component_ids[led_index], app_id, state);
+    fn set_power_state(&self, app_id: ProcessId, led_index: usize, power_state: PowerState) {
+        self.power_state_tracker.set_power_state(
+            app_id,
+            self.component_ids[led_index],
+            power_state,
+        );
     }
 }
 
@@ -124,7 +127,7 @@ impl<L: led::Led> Driver for LedDriver<'_, L> {
                             CommandReturn::failure(ErrorCode::INVAL) /* led out of range */
                         } else {
                             leds[data].on();
-                            self.set_power_state(data, app_id, PowerState::LedOn);
+                            self.set_power_state(app_id, data, PowerState::LedOn);
                             CommandReturn::success()
                         }
                     }
@@ -135,7 +138,7 @@ impl<L: led::Led> Driver for LedDriver<'_, L> {
                             CommandReturn::failure(ErrorCode::INVAL) /* led out of range */
                         } else {
                             leds[data].off();
-                            self.set_power_state(data, app_id, PowerState::LedOff);
+                            self.set_power_state(app_id, data, PowerState::LedOff);
                             CommandReturn::success()
                         }
                     }
@@ -147,9 +150,9 @@ impl<L: led::Led> Driver for LedDriver<'_, L> {
                         } else {
                             leds[data].toggle();
                             if leds[data].read() {
-                                self.set_power_state(data, app_id, PowerState::LedOn);
+                                self.set_power_state(app_id, data, PowerState::LedOn);
                             } else {
-                                self.set_power_state(data, app_id, PowerState::LedOff);
+                                self.set_power_state(app_id, data, PowerState::LedOff);
                             }
                             CommandReturn::success()
                         }
