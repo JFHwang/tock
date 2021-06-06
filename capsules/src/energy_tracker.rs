@@ -112,7 +112,7 @@ impl<'a, A: Alarm<'a>> Track for EnergyTracker<'a, A> {
             );
             if self.debug.get() {
                 debug!(
-                    "Global componend {} enters power state {} {} mW at {} ms",
+                    "Global component {} enters power state {} {} mW at {} ms",
                     component_id,
                     power_state,
                     self.power_model.get_power(component_id, power_state),
@@ -133,7 +133,7 @@ impl<'a, A: Alarm<'a>> Track for EnergyTracker<'a, A> {
                 );
                 if self.debug.get() {
                     debug!(
-                        "App_{:?} componend {} enters power state {} {} mW at {} ms",
+                        "App_{:?} component {} enters power state {} {} mW at {} ms",
                         grant_app_id,
                         component_id,
                         power_state,
@@ -149,7 +149,7 @@ impl<'a, A: Alarm<'a>> Track for EnergyTracker<'a, A> {
                 app.energy_states[component_id].power_state = power_state;
                 if self.debug.get() {
                     debug!(
-                        "App_{:?} componend {} enters power state {} {} mW at {} ms",
+                        "App_{:?} component {} enters power state {} {} mW at {} ms",
                         grant_app_id,
                         component_id,
                         power_state,
