@@ -1,5 +1,6 @@
 use core::cell::Cell;
 use kernel::common::cells::TakeCell;
+use kernel::debug;
 use kernel::hil::energy_tracker::{
     Energy, PowerModel, PowerState, Query, Track, MAX_COMPONENT_NUM,
 };
@@ -53,6 +54,7 @@ pub struct EnergyTracker<'a, A: Alarm<'a>> {
     power_model: &'a dyn PowerModel,
     energy_states: TakeCell<'static, [EnergyState]>,
     component_num: Cell<usize>,
+    debug: Cell<bool>,
 }
 
 impl<'a, A: Alarm<'a>> EnergyTracker<'a, A> {
@@ -69,6 +71,7 @@ impl<'a, A: Alarm<'a>> EnergyTracker<'a, A> {
             power_model,
             energy_states: TakeCell::new(energy_states),
             component_num: Cell::new(component_num),
+            debug: Cell::new(false),
         }
     }
 
@@ -106,7 +109,13 @@ impl<'a, A: Alarm<'a>> Track for EnergyTracker<'a, A> {
                 component_id,
                 power_state,
                 now_in_ms,
-            )
+            );
+            if self.debug.get() {
+                debug!(
+                    "Global componend {} enters power state {} at {} ms",
+                    component_id, power_state, now_in_ms,
+                );
+            }
         });
 
         // Update app-specific energy states
@@ -118,18 +127,41 @@ impl<'a, A: Alarm<'a>> Track for EnergyTracker<'a, A> {
                     component_id,
                     power_state,
                     now_in_ms,
-                )
+                );
+                if self.debug.get() {
+                    debug!(
+                        "App_{:?} componend {} enters power state {} at {} ms",
+                        grant_app_id, component_id, power_state, now_in_ms,
+                    );
+                }
             } else if app.energy_states[component_id].power_state != power_state {
                 // For the app that doesn't set the new power state,
                 // if the new power state is not the same,
                 // regard this app as not using this component any more.
                 app.energy_states[component_id].power_state = PowerState::None;
+                if self.debug.get() {
+                    debug!(
+                        "App_{:?} componend {} enters power state {} at {} ms",
+                        grant_app_id,
+                        component_id,
+                        PowerState::None,
+                        now_in_ms,
+                    );
+                }
             }
         });
     }
 }
 
 impl<'a, A: Alarm<'a>> Query for EnergyTracker<'a, A> {
+    fn debug_on(&self) {
+        self.debug.set(true);
+    }
+
+    fn debug_off(&self) {
+        self.debug.set(false);
+    }
+
     fn freeze_all(&self) {
         let now_in_ms = self.now_in_ms();
 

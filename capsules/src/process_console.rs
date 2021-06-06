@@ -298,7 +298,7 @@ impl<'a, C: ProcessManagementCapability> ProcessConsole<'a, C> {
                             );
                         } else if clean_str.starts_with("panic") {
                             panic!("ProcessConsole forced a kernel panic.");
-                        } else if clean_str.starts_with("tet-report") {
+                        } else if clean_str.starts_with("tet-status") {
                             self.energy_tracker.freeze_all();
                             debug!("Total Energy Consumption: {:.2}", self.energy_tracker.query_total_energy_consumption());
                             debug!("Per Component Energy Consumption:");
@@ -324,6 +324,10 @@ impl<'a, C: ProcessManagementCapability> ProcessConsole<'a, C> {
                                     energy_consumption,
                                 );
                             });
+                        } else if clean_str.starts_with("tet-debug-on") {
+                            self.energy_tracker.debug_on();
+                        } else if clean_str.starts_with("tet-debug-off") {
+                            self.energy_tracker.debug_off();
                         } else {
                             debug!("Valid commands are: help status list stop start fault");
                         }

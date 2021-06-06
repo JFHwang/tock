@@ -33,6 +33,8 @@ pub trait Track {
 }
 
 pub trait Query {
+    fn debug_on(&self);
+    fn debug_off(&self);
     fn freeze_all(&self);
     fn query_app_energy_consumption(&self, app_id: ProcessId) -> Energy;
     fn query_component_energy_consumption(&self, component_id: usize) -> Energy;
