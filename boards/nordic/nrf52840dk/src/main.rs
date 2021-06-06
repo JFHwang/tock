@@ -145,7 +145,7 @@ pub static mut STACK_MEMORY: [u8; 0x2000] = [0; 0x2000];
 
 /// Supported drivers by the platform
 pub struct Platform {
-    // Have to remove ble_radio from the board in order to have enough ROM for energy_tracker
+    // Have to remove ble_radio from the board to make ROM space for energy_tracker
     // ble_radio: &'static capsules::ble_advertising_driver::BLE<
     //     'static,
     //     nrf52840::ble_radio::Radio<'static>,

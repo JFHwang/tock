@@ -300,13 +300,13 @@ impl<'a, C: ProcessManagementCapability> ProcessConsole<'a, C> {
                             panic!("ProcessConsole forced a kernel panic.");
                         } else if clean_str.starts_with("tet-status") {
                             self.energy_tracker.freeze_all();
-                            debug!("Total Energy Consumption: {:.2}", self.energy_tracker.query_total_energy_consumption());
+                            debug!("Total Energy Consumption: {:.2} mJ", self.energy_tracker.query_total_energy_consumption());
                             debug!("Per Component Energy Consumption:");
                             debug!(" CID    Energy Consumption");
                             for cid in 0..self.energy_tracker.query_component_num() {
                                 let energy_consumption = self.energy_tracker.query_component_energy_consumption(cid);
                                 debug!(
-                                    "  {:?}\t{:>18.2}",
+                                    "  {:?}\t{:>15.2} mJ",
                                     cid,
                                     energy_consumption,
                                 )
@@ -318,7 +318,7 @@ impl<'a, C: ProcessManagementCapability> ProcessConsole<'a, C> {
                                 let pname = proc.get_process_name();
                                 let energy_consumption = self.energy_tracker.query_app_energy_consumption(pid);
                                 debug!(
-                                    "  {:?}\t{:<20}{:>18.2}",
+                                    "  {:?}\t{:<20}{:>15.2} mJ",
                                     pid,
                                     pname,
                                     energy_consumption,
@@ -330,6 +330,7 @@ impl<'a, C: ProcessManagementCapability> ProcessConsole<'a, C> {
                             self.energy_tracker.debug_off();
                         } else {
                             debug!("Valid commands are: help status list stop start fault");
+                            debug!("Valid TET commands are: tet-status tet-debug-on tet-debug-off");
                         }
                     }
                     Err(_e) => debug!("Invalid command: {:?}", command),

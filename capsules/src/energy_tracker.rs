@@ -112,8 +112,11 @@ impl<'a, A: Alarm<'a>> Track for EnergyTracker<'a, A> {
             );
             if self.debug.get() {
                 debug!(
-                    "Global componend {} enters power state {} at {} ms",
-                    component_id, power_state, now_in_ms,
+                    "Global componend {} enters power state {} {} mW at {} ms",
+                    component_id,
+                    power_state,
+                    self.power_model.get_power(component_id, power_state),
+                    now_in_ms,
                 );
             }
         });
@@ -130,21 +133,27 @@ impl<'a, A: Alarm<'a>> Track for EnergyTracker<'a, A> {
                 );
                 if self.debug.get() {
                     debug!(
-                        "App_{:?} componend {} enters power state {} at {} ms",
-                        grant_app_id, component_id, power_state, now_in_ms,
+                        "App_{:?} componend {} enters power state {} {} mW at {} ms",
+                        grant_app_id,
+                        component_id,
+                        power_state,
+                        self.power_model.get_power(component_id, power_state),
+                        now_in_ms,
                     );
                 }
             } else if app.energy_states[component_id].power_state != power_state {
                 // For the app that doesn't set the new power state,
                 // if the new power state is not the same,
                 // regard this app as not using this component any more.
-                app.energy_states[component_id].power_state = PowerState::None;
+                let power_state = PowerState::None;
+                app.energy_states[component_id].power_state = power_state;
                 if self.debug.get() {
                     debug!(
-                        "App_{:?} componend {} enters power state {} at {} ms",
+                        "App_{:?} componend {} enters power state {} {} mW at {} ms",
                         grant_app_id,
                         component_id,
-                        PowerState::None,
+                        power_state,
+                        self.power_model.get_power(component_id, power_state),
                         now_in_ms,
                     );
                 }
